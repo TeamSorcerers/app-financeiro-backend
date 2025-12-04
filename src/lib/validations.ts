@@ -132,13 +132,17 @@ export const parseFormData = <T extends z.ZodTypeAny>(
         data[key] = value;
       }
     }
-    // Tentar converter números
-    else if (typeof value === "string" && !isNaN(Number(value))) {
-      data[key] = Number(value);
-    }
     // Converter booleanos
     else if (value === "true" || value === "false") {
       data[key] = value === "true";
+    }
+    // Não converter password, email e name para número
+    else if (key === "password" || key === "email" || key === "name" || key === "description") {
+      data[key] = value;
+    }
+    // Tentar converter números apenas para campos numéricos conhecidos
+    else if (typeof value === "string" && !isNaN(Number(value)) && (key === "amount" || key === "balance" || key === "limit")) {
+      data[key] = Number(value);
     }
     // Manter valor original
     else {
