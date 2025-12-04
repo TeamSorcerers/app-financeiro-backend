@@ -50,7 +50,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authUser = getAuthUser(request);
@@ -58,9 +58,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    const { id } = await params;
+
     await db.delete(categories)
       .where(and(
-        eq(categories.id, params.id),
+        eq(categories.id, id),
         eq(categories.userId, authUser.userId)
       ));
 
