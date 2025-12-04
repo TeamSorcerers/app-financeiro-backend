@@ -1,27 +1,13 @@
 import { createHash } from "crypto";
-import { writeFile, mkdir, access } from "fs/promises";
-import { join } from "path";
 import { db } from "@/db";
 import { images } from "@/db/schema";
 import { eq } from "drizzle-orm";
-
-const UPLOAD_DIR = join(process.cwd(), "public", "images");
 
 export async function calculateMD5(buffer: Buffer): Promise<string> {
   return createHash("md5").update(buffer).digest("hex");
 }
 
-export async function ensureUploadDir() {
-  try {
-    await access(UPLOAD_DIR);
-  } catch {
-    await mkdir(UPLOAD_DIR, { recursive: true });
-  }
-}
-
 export async function uploadImage(file: File): Promise<{ id: string; path: string; checksum: string }> {
-  await ensureUploadDir();
-
   const buffer = Buffer.from(await file.arrayBuffer());
   const checksum = await calculateMD5(buffer);
   
@@ -33,27 +19,32 @@ export async function uploadImage(file: File): Promise<{ id: string; path: strin
   if (existingImage) {
     return {
       id: existingImage.id,
-      path: existingImage.path,
+      path: `/api/images/${existingImage.id}`,
       checksum: existingImage.checksum,
     };
   }
 
-  // Salvar nova imagem
-  const filename = `${checksum}.png`;
-  const filepath = join(UPLOAD_DIR, filename);
-  const publicPath = `/images/${filename}`;
+  // Converter imagem para base64
+  const base64Data = buffer.toString('base64');
+  const mimeType = file.type || 'image/png';
 
-  await writeFile(filepath, buffer);
-
-  // Registrar no banco
+  // Salvar no banco
   const [newImage] = await db.insert(images).values({
     checksum,
-    path: publicPath,
+    path: `/api/images/${checksum}`, // Placeholder, será atualizado
+    data: base64Data,
+    mimeType,
   }).returning();
 
+  // Atualizar path com o ID correto
+  const [updatedImage] = await db.update(images)
+    .set({ path: `/api/images/${newImage.id}` })
+    .where(eq(images.id, newImage.id))
+    .returning();
+
   return {
-    id: newImage.id,
-    path: newImage.path,
-    checksum: newImage.checksum,
+    id: updatedImage.id,
+    path: updatedImage.path,
+    checksum: updatedImage.checksum,
   };
 }

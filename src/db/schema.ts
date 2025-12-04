@@ -121,6 +121,8 @@ export const images = pgTable("images", {
   id: uuid("id").primaryKey().defaultRandom(),
   checksum: varchar("checksum", { length: 32 }).notNull().unique(),
   path: text("path").notNull(),
+  data: text("data").notNull(), // Base64 encoded image
+  mimeType: varchar("mime_type", { length: 100 }).notNull().default('image/png'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
